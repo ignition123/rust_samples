@@ -1,0 +1,164 @@
+"go.mongodb.org/mongo-driver/bson"
+"go.mongodb.org/mongo-driver/mongo"
+"go.mongodb.org/mongo-driver/bson/primitive"
+"go.mongodb.org/mongo-driver/mongo/options"
+
+docID, err := primitive.ObjectIDFromHex(*pojoObj.ChannelId)
+
+FindOne Query Mongodb
+
+var result = make(map[string]interface{})
+ctx := context.Background()
+otps := options.FindOne().SetProjection(bson.M{"_id": 0, "imageName":1})
+err := MongoConnection.Database().Collection("users").FindOne(ctx, bson.D{{"email", sessionObject["Email"].(string)}}, otps).Decode(&result)
+
+###################################################################
+
+Find Query
+
+cursor, err := episodesCollection.Find(ctx, bson.M{})
+var episodes []bson.M
+if err = cursor.All(ctx, &episodes); err != nil {
+  log.Fatal(err)
+}
+
+###################################################################
+
+Upodate Query
+
+id, _ := primitive.ObjectIDFromHex("5d9e0173c1305d2a54eb431a")
+
+result, err := podcastsCollection.UpdateOne(
+  ctx,
+  bson.M{"_id": id},
+  bson.D{
+    {"$set", bson.D{{"author", "Nic Raboy"}}},
+  },
+)
+
+result, err = podcastsCollection.UpdateMany(
+  ctx,
+  bson.M{"title": "The Polyglot Developer Podcast"},
+  bson.D{
+    {"$set", bson.D{{"author", "Nicolas Raboy"}}},
+  },
+)
+
+result, err = podcastsCollection.ReplaceOne(
+  ctx,
+  bson.M{"author": "Nic Raboy"},
+  bson.M{
+    "title":  "The Nic Raboy Show",
+    "author": "Nicolas Raboy",
+  },
+)
+
+###################################################################
+
+Delete Query
+
+deleteResult, err := collection.DeleteMany(context.TODO(), bson.D{{}})
+
+deleteResult, err := collection.DeleteOne(context.TODO(), bson.D{{}})
+
+###################################################################
+
+Insert Query
+
+insertResult, err := collection.InsertOne(context.TODO(), ash)
+
+insertManyResult, err := collection.InsertMany(context.TODO(), trainers)
+
+###################################################################
+
+Aggregate Query
+
+matchStage := bson.D{{"$match", bson.D{{"podcast", id}}}}
+groupStage := bson.D{{"$group", bson.D{{"_id", "$podcast"}, {"total", bson.D{{"$sum", "$duration"}}}}}}
+
+showInfoCursor, err := episodesCollection.Aggregate(ctx, mongo.Pipeline{matchStage, groupStage})
+if err != nil {
+  panic(err)
+}
+var showsWithInfo []bson.M
+if err = showInfoCursor.All(ctx, &showsWithInfo); err != nil {
+  panic(err)
+}
+
+aggregate := mongo.Pipeline{
+  bson.D{{
+    "$match", bson.M{
+      "_id": docID,
+      "members": bson.M{
+        "$elemMatch":bson.M{
+          "userId": sessionObject["UserId"],
+        },
+      },
+    },
+  }},
+  bson.D{{
+    "$unwind", "$members",
+  }},
+  bson.D{{
+    "$project", bson.M{
+      "userId":"$members.userId",
+      "admin":"$members.admin",
+      "mute":"$members.mute",
+    },
+  }},
+  bson.D{{
+    "$lookup", bson.M{
+            "from": "users",
+            "localField": "userId",
+            "foreignField": "userId",
+            "as": "userData",
+        },
+  }},
+  bson.D{{
+    "$unwind", "$userData",
+  }},
+  bson.D{{
+    "$project", bson.M{
+      "_id": false,
+      "userId": "$userId",
+      "admin": "$admin",
+      "mute": "$mute",
+      "fullName": "$userData.fullName",
+      "picture": "$userData.picture",
+      "email": "$userData.email",
+    },
+  }},
+  bson.D{{
+    "$skip", pojoObj.Skip,
+  }},
+  bson.D{{
+    "$limit", pojoObj.Limit,
+  }},
+}
+
+###################################################################
+
+Watch
+
+pipeline := mongo.Pipeline{bson.D{{"$match", bson.D{{"$or",
+  bson.A{
+    bson.D{{"fullDocument.username", "alice"}},
+    bson.D{{"operationType", "delete"}}}}},
+}}}
+cs, err := coll.Watch(ctx, pipeline)
+require.NoError(t, err)
+defer cs.Close(ctx)
+
+ok := cs.Next(ctx)
+next := cs.Current
+
+Complete Tutorials: https://docs.mongodb.com/manual/changeStreams/
+https://developer.mongodb.com/quickstart/golang-change-streams
+
+###################################################################
+
+Transaction Processing System Golang
+
+https://developer.mongodb.com/quickstart/golang-multi-document-acid-transactions
+
+https://docs.mongodb.com/manual/core/transactions/
